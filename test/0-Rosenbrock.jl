@@ -14,7 +14,7 @@ function Df_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
     return Df
 end
 
-function prob_0( alt_prob::Bool )
+function rosenbrock_test( alt_prob::Bool )
     x  = [ -1.2, 1.0 ]
     hy = [  0.0, 0.0 ]
     if alt_prob

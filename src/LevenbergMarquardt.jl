@@ -1,12 +1,91 @@
 module JLLM
 
-export levenberg_marquardt
+export levenberg_marquardt, lm_check_jacobian
 
 using LinearAlgebra
 
 const global SING_EPS = 1e-24
 
-struct LMOtimization{T <: Real}
+
+function lm_check_jacobian( f::Function, Df::Function, x::AbstractVector{T} ) where T <: AbstractFloat
+    #  Check the Jacobian of a n-valued nonlinear function in m variables
+    #  evaluated at a point p, for consistency with the function itself.
+    # 
+    #  Based on fortran77 subroutine CHKDER by
+    #  Burton S. Garbow, Kenneth E. Hillstrom, Jorge J. More
+    #  Argonne National Laboratory. MINPACK project. March 1980.
+    # 
+    # 
+    #  f points to a function from R^m --> R^n: Given an x in R^m it yields y in R^n
+    #  Df points to a function implementing the Jacobian of f, whose correctness is to
+    #      be tested. Given an x in R^m, Df computes into the nxm matrix j the Jacobian
+    #      of f at x. Note that row i of j corresponds to the gradient of the i-th
+    #      component of f, evaluated at x.
+    #  x is an input array of length m containing the point of evaluation.
+    #  n is the number of functions
+    #
+    #
+    #  The returned value, err, is an array of length n containing measures
+    #      of correctness of the respective gradients. If there is
+    #      no severe loss of significance, then if err[i] is 1.0 the
+    #      i-th gradient is correct, while if err[i] is 0.0 the i-th
+    #      gradient is incorrect. For values of err between 0.0 and 1.0,
+    #      the categorization is less certain. In general, a value of
+    #      err[i] greater than 0.5 indicates that the i-th gradient is
+    #      probably correct, while a value of err[i] less than 0.5
+    #      indicates that the i-th gradient is probably incorrect.
+    # 
+    # 
+    #  The function does not perform reliably if cancellation or
+    #  rounding errors cause a severe loss of significance in the
+    #  evaluation of a function. therefore, none of the components
+    #  of x should be unusually small (in particular, zero) or any
+    #  other value which may cause loss of significance.
+    # 
+    y = f(x)
+    J = Df(x)
+    m = length(x)
+    n = length(y)
+    mach_ε = eps(T)
+    sqrt_ε = sqrt(mach_ε)
+
+    xx = similar(x)
+    for j in 1:m
+        xx[j] = x[j] == 0 ? sqrt_ε : x[j] + sqrt_ε*abs(x[j])
+    end
+
+    yy = f(xx)
+
+    ε = zeros(T, n)
+    for j in 1:m
+        aux = x[j] == 0 ? one(T) : abs(x[j])
+        for i in 1:n
+            ε[i] += aux * J[i,j]
+        end
+    end
+
+    mach_100ε = 100 * mach_ε
+    log10_ε   = log10(sqrt_ε)
+    for i in 1:n
+        aux = one(T)
+        if y[i] != zero(T) && yy[i] != zero(T) && abs(yy[i]-y[i]) >= mach_100ε * abs(y[i])
+            aux = sqrt_ε * abs( (yy[i]-y[i])/sqrt_ε - ε[i] ) / ( abs(yy[i]) + abs(y[i]) )
+        end
+
+        if aux >= sqrt_ε
+            ε[i] = zero(T)
+        elseif aux > mach_ε
+            ε[i] = (log10(aux) - log10_ε) / log10_ε
+        else
+            ε[i] = one(T)
+        end
+    end
+
+    return ε
+end
+
+
+struct LMOtimization{T <: AbstractFloat}
     x::AbstractVector{T}     # minimizer approximation
     y::AbstractVector{T}     # value of f(x)
     stop_error::Bool         # stopped because of an error
@@ -23,7 +102,7 @@ struct LMOtimization{T <: Real}
     covar::AbstractMatrix{T} # covariance matrix
     # function LMOtimization{T}( x::AbstractVector{T}, y::AbstractVector{T}, stop_error::Bool, niter::Int, stop::Int,
     #                           nfev::Int, njev::Int, nlss::Int, ε0_ℓ2::T, ε_ℓ2::T, Jtε_ℓ∞::T, Δx2_ℓ2::T, μ_dJtJ::T,
-    #                           covar::AbstractMatrix{T} ) where {T<:Real}
+    #                           covar::AbstractMatrix{T} ) where {T<:AbstractFloat}
     #     return new( x, y, stop_error, niter, stop, nfev, njev, nlss, ε0_ℓ2, ε_ℓ2, Jtε_ℓ∞, Δx2_ℓ2, μ_dJtJ, covar )
     # end
 end
@@ -33,7 +112,7 @@ function lm_fwd_jac_approx( f::Function,
                             J::AbstractMatrix{T},
                             x::AbstractVector{T},
                             y::AbstractVector{T},
-                            δ::T ) where T <: Real
+                            δ::T ) where T <: AbstractFloat
     m = length(x)
     n = length(y)
     for j in 1:m
@@ -54,7 +133,7 @@ end
 function lm_mid_jac_approx( f::Function,
                             J::AbstractMatrix{T},
                             x::AbstractVector{T},
-                            δ::T ) where T <: Real
+                            δ::T ) where T <: AbstractFloat
     m = length(x)
     n = length(y)
     for j in 1:m
@@ -94,7 +173,7 @@ function levenberg_marquardt( f::Function,
                               Jtε_stop::T                = 1e-15,
                               Δx_stop::T                 = 1e-15,
                               εy_stop::T                 = 1e-20,
-                              compute_covar_matrix::Bool = false ) where T <: Real
+                              compute_covar_matrix::Bool = false ) where T <: AbstractFloat
     n = length(hy)
     m = length(x)
     if n < m
@@ -144,7 +223,7 @@ function levenberg_marquardt( f::Function,
         end
     end
 
-    niter::Int = 0
+    niter::Int = -1
     while niter < maxit && stop == 0 # Outter loop
         niter += 1
 
@@ -308,8 +387,8 @@ function levenberg_marquardt( f::Function,
                               Jtε_stop::T                = 1e-15,
                               Δx_stop::T                 = 1e-15,
                               εy_stop::T                 = 1e-20,
-                              δ::T                       = 1e-6,
-                              compute_covar_matrix::Bool = false ) where T <: Real
+                              δ::T                       = 1e-6;
+                              compute_covar_matrix::Bool = false ) where T <: AbstractFloat
     n = length(hy)
     m = length(x)
     if n < m
@@ -353,7 +432,7 @@ function levenberg_marquardt( f::Function,
         stop = 7 # stopped by invalid (i.e. NaN or Inf) "func" values. This is a user error
     end
 
-    niter::Int = 0
+    niter::Int = -1
     while niter < maxit && stop == 0 # Outter loop
         niter += 1
 
@@ -470,8 +549,9 @@ function levenberg_marquardt( f::Function,
     if compute_covar_matrix
         try
             # restore diagonal J^T J entries
-            JtJ   += diagm(size(JtJ)..., diagJtJ) - diagm(size(JtJ)..., diag(JtJ))
-            covarm = (εy_ℓ2 / (n-rank(C))) * pinv(JtJ)
+            JtJ    += diagm(size(JtJ)..., diagJtJ) - diagm(size(JtJ)..., diag(JtJ))
+            covarm  = pinv(JtJ)
+            covarm *= (εy_ℓ2 / (n-rank(covarm)))
         catch
             pass
         end

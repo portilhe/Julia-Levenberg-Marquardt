@@ -1,6 +1,9 @@
 include("../src/LevenbergMarquardt.jl")
-include("Rosenbrock.jl")
-include("ModRosenbrock.jl")
+include("0-Rosenbrock.jl")
+include("1-ModRosenbrock.jl")
+include("2-Powell.jl")
+include("3-Wood.jl")
+include("4-Meyer.jl")
 
 using Test
 using .JLLM
@@ -31,11 +34,11 @@ function output_results( io::IO, probname::AbstractString, lmo::JLLM.LMOtimizati
     printfmtln( io, "Levenberg-Marquardt returned after $(lmo.niter) iterations" )
     print( io, "\nSolution   x    =" )
 	for xi in lmo.x
-        printfmt( io, " {:9.6f}", xi )
+        printfmt( io, " {:9.6e}", xi )
     end
     print( io, "\nFunc value f(x) =" )
 	for yi in lmo.y
-        printfmt( io, " {:9.6f}", yi )
+        printfmt( io, " {:9.6e}", yi )
     end
     println( io, "\n\nMinimization info:" )
 	printfmtln( io, "Initial ||e||_2       : {:9.6f}", lmo.ε0_ℓ2  )
@@ -51,11 +54,11 @@ function output_results( io::IO, probname::AbstractString, lmo::JLLM.LMOtimizati
     println( io )
 end
 
-probnames = [ "Rosenbrock function",
-			  "modified Rosenbrock problem",
-			  "Powell's function",
-			  "Wood's function",
-			  "Meyer's (reformulated) problem",
+problems = [  ("Rosenbrock function",            rosenbrock_test    ),
+			  ("Modified Rosenbrock problem",    mod_rosenbrock_test),
+			  ("Powell's function",              powell_test        ),
+			  ("Wood's function",                wood_test          ),
+			  ("Meyer's (reformulated) problem", meyer_test         ),
 			  "Osborne's problem",
 			  "helical valley function",
 			  "Boggs & Tolle's problem #3",
@@ -72,30 +75,19 @@ probnames = [ "Rosenbrock function",
 			  "Boggs & Tolle modified problem #7",
 			  "Hock - Schittkowski modified #2 problem #52",
 			  "Hock - Schittkowski modified problem #76" ]
-probfuncs = [ prob_0, prob_1 ]
 
-probnames = probnames[1:2]
+problems = problems[1:5]
 
 println("Running tests:")
 
-# @testset "Levenberg-Marquardt" begin
-#     for (probname, prob_test) in zip(probnames, my_tests)
-#         println(" * $(probname)")
-#         include(prob_test)
-#         output_results( stdout, probname, lmo )
-#     end
-# end
-
 alt_tests = false
+io::IO    = stdout
 
 @testset "Levenberg-Marquardt" begin
-    for (probname, probfunc) in zip(probnames, probfuncs)
+    for (probname, probfunc) in problems
         println(" * $(probname)")
-        lmo = probfunc(alt_tests)
+        lmo = probfunc( io, alt_tests )
         @test lmo.stop_error == false
-        output_results( stdout, probname, lmo )
+        output_results( io, probname, lmo )
     end
 end
-
-# lmo = prob_0(alt_tests)
-# output_results( stdout, probnames[1], lmo )
