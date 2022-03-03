@@ -450,7 +450,7 @@ function levenberg_marquardt( f::Function,
             Δx2_ℓ2 = 0  # no increment for x in this case
             stop   = 1  # stopped by small gradient Jtε
             break
-        elseif niter == 1
+        elseif niter == 0
             # compute initial damping factor
             μ *= maximum( diagJtJ );
         end
@@ -467,8 +467,8 @@ function levenberg_marquardt( f::Function,
             Δx       = JtJ\Jtε
             issolved = true
             nlss    += 1
-        catch
-            pass
+        catch e
+            issolved = false
         end
         
         if issolved

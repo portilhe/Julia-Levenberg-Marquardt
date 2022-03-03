@@ -1,5 +1,5 @@
 
-function f_powell( x::AbstractVector{T} ) where {T <: Real}
+function f_powell( x::AbstractVector{T} ) where {T <: AbstractFloat}
     n = length(x)
     y = similar(x)
     for i in range(1, n; step=2)
@@ -9,7 +9,7 @@ function f_powell( x::AbstractVector{T} ) where {T <: Real}
     return y
 end
 
-function Df_powell( x::AbstractVector{T} ) where {T <: Real}
+function Df_powell( x::AbstractVector{T} ) where {T <: AbstractFloat}
     n = length(x)
     Df = Matrix{T}( undef, n, n )
     for i in range(1, n; step=2)

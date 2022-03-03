@@ -1,5 +1,5 @@
 
-function f_wood( x::AbstractVector{T} ) where {T <: Real}
+function f_wood( x::AbstractVector{T} ) where {T <: AbstractFloat}
     m = length(x)
     n = 6 * m ÷ 4
     y = Vector{T}( undef, n )
@@ -14,7 +14,7 @@ function f_wood( x::AbstractVector{T} ) where {T <: Real}
     return y
 end
 
-function Df_wood( x::AbstractVector{T} ) where {T <: Real}
+function Df_wood( x::AbstractVector{T} ) where {T <: AbstractFloat}
     m = length(x)
     n = 6 * m ÷ 4
     Df = Matrix{T}( undef, n, m )

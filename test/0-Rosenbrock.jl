@@ -1,13 +1,13 @@
 const ROSD = 105.0
 
 
-function f_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
+function f_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     y = similar(x)
     y[1] = y[2] = (1 - x[1])^2 + ROSD * (x[2] - x[1]^2)^2
     return y
 end
 
-function Df_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
+function Df_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     Df = Matrix{T}( undef, 2, 2 )
     Df[1,1] = Df[2,1] = -2 + 2*x[1] - 4*ROSD*(x[2] - x[1]^2)*x[1]
     Df[1,2] = Df[2,2] = 2*ROSD*(x[2]-x[1]^2)

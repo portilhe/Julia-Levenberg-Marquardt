@@ -1,6 +1,6 @@
 const MODROSLAM = 1E02
 
-function f_mod_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
+function f_mod_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     m = length(x)
     n = 3 * m ÷ 2
     y = Vector{T}( undef, n )
@@ -12,7 +12,7 @@ function f_mod_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
     return y
 end
 
-function Df_mod_rosenbrock( x::AbstractVector{T} ) where {T <: Real}
+function Df_mod_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     m = length(x)
     n = 3 * m ÷ 2
     Df = Matrix{T}( undef, n, m )

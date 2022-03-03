@@ -1,23 +1,23 @@
 
-function f_meyer( x::AbstractVector{T}, n::Int ) where {T <: Real}
+function f_meyer( x::AbstractVector{T}, n::Int ) where {T <: AbstractFloat}
     m = length(x)
-    @assert (m == 3) "Meyer's problem is defined with m == 3" 
+    @assert (m == 3) "Meyer's problem is defined with m == 3"
     y = Vector{T}( undef, n )
     for i in 1:n
-        ui = 0.45 + 0.05 * (i-1)
+        ui::T = 0.45 + 0.05 * (i-1)
         y[i] = x[1] * exp( 10.0 * x[2]/ (ui+x[3]) - 13.0 )
     end
     return y
 end
 
-function Df_meyer( x::AbstractVector{T}, n::Int ) where {T <: Real}
+function Df_meyer( x::AbstractVector{T}, n::Int ) where {T <: AbstractFloat}
     m = length(x)
-    @assert (m == 3) "Meyer's problem is defined with m == 3" 
+    @assert (m == 3) "Meyer's problem is defined with m == 3"
     Df = Matrix{T}( undef, n, m )
     for i in 1:n
-        ui   = 0.45 + 0.05 * (i-1)
-		aux1 = ui + x[3];
-		aux2 = exp( 10.0 * x[2] / aux1 - 13.0 );
+        ui::T   = 0.45 + 0.05 * (i-1)
+		aux1::T = ui + x[3]
+		aux2::T = exp( 10.0 * x[2] / aux1 - 13.0 )
 
         Df[i,1] = aux2
         Df[i,2] = 10.0 * x[1] * aux2 / aux1
