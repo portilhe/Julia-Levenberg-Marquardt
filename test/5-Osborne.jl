@@ -28,7 +28,7 @@ function Df_osborne( x::AbstractVector{T}, n::Int ) where {T <: AbstractFloat}
     return Df
 end
 
-function osborne_test( io::IO, alt_prob::Bool )
+function osborne_test( ::IO, alt_prob::Bool )
     x  = [ 0.5
            1.5
            1.0

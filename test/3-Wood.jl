@@ -54,7 +54,7 @@ function Df_wood( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
-function wood_test( alt_prob::Bool )
+function wood_test( ::IO, alt_prob::Bool )
     x  = [ -3.0, -1.0, -3.0, -1.0 ]
     hy = [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0  ]
 

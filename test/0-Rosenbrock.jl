@@ -1,6 +1,5 @@
 const ROSD = 105.0
 
-
 function f_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     y = similar(x)
     y[1] = y[2] = (1 - x[1])^2 + ROSD * (x[2] - x[1]^2)^2
@@ -14,7 +13,7 @@ function Df_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
-function rosenbrock_test( alt_prob::Bool )
+function rosenbrock_test( ::IO, alt_prob::Bool )
     x  = [ -1.2, 1.0 ]
     hy = [  0.0, 0.0 ]
     if alt_prob

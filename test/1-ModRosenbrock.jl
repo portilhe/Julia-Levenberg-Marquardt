@@ -29,7 +29,7 @@ function Df_mod_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
-function mod_rosenbrock_test( alt_prob::Bool )
+function mod_rosenbrock_test( ::IO, alt_prob::Bool )
     x  = [ -1.2, 1.0 ]
     hy = [  0.0, 0.0, 0.0 ]
     if alt_prob

@@ -29,23 +29,39 @@ function map_reason(reason::Int)::String
     end
 end
 
+function printfmt_g( io, pre_s, x, pos_s=""; thresh=5, mantissa=5 )
+	print(io, pre_s)
+	t = Int(round(abs(log10(abs(x))),RoundUp))
+	if t >= thresh
+		printfmt( io, "{:9.$(mantissa)e}", x )
+	else
+		printfmt( io, "{:9.$(t+mantissa)f}", x )
+	end
+	print(io, pos_s)
+end
+
+function printfmtln_g( io, pre_s, x, pos_s=""; thresh=5, mantissa=5 )
+	printfmt_g( io, pre_s, x, pos_s; thresh=5, mantissa=5 )
+	println(io,"")
+end
+
 function output_results( io::IO, probname::AbstractString, lmo::JLLM.LMOtimization )
     println( io, "Results for $probname:" )
     printfmtln( io, "Levenberg-Marquardt returned after $(lmo.niter) iterations" )
     print( io, "\nSolution   x    =" )
 	for xi in lmo.x
-        printfmt( io, " {:9.6e}", xi )
+		printfmt_g( io, " ", xi )
     end
     print( io, "\nFunc value f(x) =" )
 	for yi in lmo.y
-        printfmt( io, " {:9.6e}", yi )
+		printfmt_g( io, " ", yi )
     end
     println( io, "\n\nMinimization info:" )
-	printfmtln( io, "Initial ||e||_2       : {:9.6f}", lmo.ε0_ℓ2  )
-	printfmtln( io, "Final   ||e||_2       : {:9.6e}", lmo.ε_ℓ2   )
-	printfmtln( io, "Final   ||J^T e||_inf : {:9.6e}", lmo.Jtε_ℓ∞ )
-	printfmtln( io, "Final   ||Δx||_2      : {:9.6e}", lmo.Δx2_ℓ2 )
-	printfmtln( io, "Final   mu/max[J^T J] : {:9.6e}", lmo.μ_dJtJ )
+	printfmtln_g( io, "Initial ||e||_2       : ", lmo.ε0_ℓ2  )
+	printfmtln_g( io, "Final   ||e||_2       : ", lmo.ε_ℓ2   )
+	printfmtln_g( io, "Final   ||J^T e||_inf : ", lmo.Jtε_ℓ∞ )
+	printfmtln_g( io, "Final   ||Δx||_2      : ", lmo.Δx2_ℓ2 )
+	printfmtln_g( io, "Final   mu/max[J^T J] : ", lmo.μ_dJtJ )
 	printfmtln( io, "# iterations          : {:4d}",   lmo.niter  )
 	printfmtln( io, "Stopping reason {:2d}    : {:s}", lmo.stop, map_reason(lmo.stop) )
 	printfmtln( io, "# function evaluations: {:4d}",   lmo.nfev   )
@@ -81,7 +97,7 @@ problems = problems[1:5]
 println("Running tests:")
 
 alt_tests = false
-io::IO    = stdout
+io        = stdout
 
 @testset "Levenberg-Marquardt" begin
     for (probname, probfunc) in problems

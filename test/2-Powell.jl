@@ -24,7 +24,7 @@ function Df_powell( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
-function powell_test( alt_prob::Bool )
+function powell_test( ::IO, alt_prob::Bool )
     x  = [ 3.0, 1.0 ]
     hy = [ 0.0, 0.0 ]
     if alt_prob
