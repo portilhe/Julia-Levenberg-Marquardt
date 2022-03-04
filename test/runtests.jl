@@ -31,7 +31,10 @@ end
 
 function printfmt_g( io, pre_s, x, pos_s=""; thresh=5, mantissa=5 )
 	print(io, pre_s)
-	t = Int(round(abs(log10(abs(x))),RoundUp))
+	if x == 0
+		t = 1
+	else
+		t = Int(round(abs(log10(abs(x))),RoundUp))
 	if t >= thresh
 		printfmt( io, "{:9.$(mantissa)e}", x )
 	else
@@ -75,8 +78,8 @@ problems = [  ("Rosenbrock function",            rosenbrock_test    ),
 			  ("Powell's function",              powell_test        ),
 			  ("Wood's function",                wood_test          ),
 			  ("Meyer's (reformulated) problem", meyer_test         ),
-			  "Osborne's problem",
-			  "helical valley function",
+			  ("Osborne's problem",              osborne_test       ),
+			  ("Helical valley function",        helical_valley_test),
 			  "Boggs & Tolle's problem #3",
 			  "Hock - Schittkowski problem #28",
 			  "Hock - Schittkowski problem #48",
