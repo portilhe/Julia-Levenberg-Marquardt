@@ -16,7 +16,7 @@ function Df_powell( x::AbstractVector{T} ) where {T <: AbstractFloat}
         for j in range(1, n; step=2)
             DF[i  ,j  ] = 1.0
             DF[i  ,j+1] = 0.0
-
+            
             Df[i+1,j  ] = 1.0 / (x[j] + 0.1)^2
             Df[i+1,j+1] = 4.0 * x[j+1]
         end
@@ -24,6 +24,7 @@ function Df_powell( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
+# Powell's function, minimum at (0, 0)
 function powell_test( ::IO, alt_prob::Bool )
     x  = [ 3.0, 1.0 ]
     hy = [ 0.0, 0.0 ]

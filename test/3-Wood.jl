@@ -24,27 +24,27 @@ function Df_wood( x::AbstractVector{T} ) where {T <: AbstractFloat}
             DF[i  ,j+1] =  10.0
             DF[i  ,j+2] =   0.0
             DF[i  ,j+3] =   0.0
-
+            
             DF[i+1,j  ] =  -1.0
             DF[i+1,j+1] =   0.0
             DF[i+1,j+2] =   0.0
             DF[i+1,j+3] =   0.0
-
+            
             DF[i+2,j  ] =   0.0
             DF[i+2,j+1] =   0.0
             DF[i+2,j+2] =  -2*sqrt(90.0) * x[j+2]
             DF[i+2,j+3] =   sqrt(90.0)
-
+            
             DF[i+3,j  ] =   0.0
             DF[i+3,j+1] =   0.0
             DF[i+3,j+2] =  -1.0
             DF[i+3,j+3] =   0.0
-
+            
             DF[i+4,j  ] =   0.0
             DF[i+4,j+1] =   sqrt(10.0)
             DF[i+4,j+2] =   0.0
             DF[i+4,j+3] =   sqrt(10.0)
-
+            
             DF[i+5,j  ] =   0.0
             DF[i+5,j+1] =  -1.0 / sqrt(10.0)
             DF[i+5,j+2] =   0.0
@@ -54,6 +54,7 @@ function Df_wood( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
+# Wood's function, minimum at (1, 1, 1, 1)
 function wood_test( ::IO, alt_prob::Bool )
     x  = [ -3.0, -1.0, -3.0, -1.0 ]
     hy = [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0  ]

@@ -26,6 +26,7 @@ function Df_meyer( x::AbstractVector{T}, n::Int ) where {T <: AbstractFloat}
     return Df
 end
 
+# Meyer's (reformulated) problem, minimum at (2.48, 6.18, 3.45)
 function meyer_test( io::IO, alt_prob::Bool )
     x  = [ 8.85
            4.0

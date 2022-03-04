@@ -28,6 +28,7 @@ function Df_osborne( x::AbstractVector{T}, n::Int ) where {T <: AbstractFloat}
     return Df
 end
 
+# Osborne's problem, minimum at (0.3754, 1.9358, -1.4647, 0.0129, 0.0221)
 function osborne_test( ::IO, alt_prob::Bool )
     x  = [ 0.5
            1.5

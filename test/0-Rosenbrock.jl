@@ -13,6 +13,7 @@ function Df_rosenbrock( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
+# Rosenbrock function, global minimum at (1, 1)
 function rosenbrock_test( ::IO, alt_prob::Bool )
     x  = [ -1.2, 1.0 ]
     hy = [  0.0, 0.0 ]
