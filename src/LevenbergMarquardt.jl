@@ -1,6 +1,6 @@
 module JLLM
 
-export levenberg_marquardt, lm_check_jacobian
+export levenberg_marquardt, levenberg_marquardt_lec, lm_check_jacobian
 
 using LinearAlgebra
 
@@ -82,7 +82,7 @@ function lm_check_jacobian( f::Function, Df::Function, x::AbstractVector{T} ) wh
     end
 
     return ε
-end
+end # function lm_check_jacobian
 
 
 struct LMOtimization{T <: AbstractFloat}
@@ -219,7 +219,7 @@ function levenberg_marquardt( f::Function,
             stop   = 1  # stopped by small gradient Jtε
         else
             # compute initial damping factor
-            μ *= maximum( diagJtJ );
+            μ *= maximum( diagJtJ )
         end
     end
 
@@ -343,7 +343,7 @@ function levenberg_marquardt( f::Function,
 
     return LMOtimization( x, y, stop_error, niter, stop, nfev, njev, nlss,
                           εy0_ℓ2, εy_ℓ2, Jtε_ℓ∞, Δx2_ℓ2, μ / maximum(diagJtJ), covarm )
-end # levenberg_marquardt
+end # levenberg_marquardt (with Jacobian)
 
 
 function _approximate_jacobian_values( f, J, x, y, δ, εy, updx, updJ, λ, K, use_ffdif, nfev, njap, newJ,
@@ -452,7 +452,7 @@ function levenberg_marquardt( f::Function,
             break
         elseif niter == 0
             # compute initial damping factor
-            μ *= maximum( diagJtJ );
+            μ *= maximum( diagJtJ )
         end
         
         # determine increment using adaptive damping
@@ -506,8 +506,8 @@ function levenberg_marquardt( f::Function,
 
             if updx || dF > 0 # update jac
                 J += (yΔy - y - J*Δx) * transpose(Δx) / Δx2_ℓ2
-                updJ += 1;
-                newJ  = true;
+                updJ += 1
+                newJ  = true
             end
 
             if dL > zero(T) && dF > zero(T) # reduction in error, increment is accepted
@@ -562,6 +562,222 @@ function levenberg_marquardt( f::Function,
     return LMOtimization( x, y, stop_error, niter, stop, nfev, njap, nlss,
                           εy0_ℓ2, εy_ℓ2, Jtε_ℓ∞, Δx2_ℓ2, μ / maximum(diagJtJ), covarm )
 
-end # function levenberg_marquardt
+end # function levenberg_marquardt (without Jacobian)
+
+
+function lm_lec_elim( A::AbstractMatrix{T}, b::AbstractVector{T} ) where T <: AbstractFloat
+    # This function implements an elimination strategy for linearly constrained
+    # optimization problems. The strategy relies on QR decomposition to transform
+    # an optimization problem constrained by Ax=b to an equivalent, unconstrained
+    # one. Also referred to as "null space" or "reduced Hessian" method.
+    # See pp. 430-433 (chap. 15) of "Numerical Optimization" by Nocedal-Wright
+    # for details.
+    #
+    # A is mxn with m <= n and rank(A) = m
+    # Two matrices Y and Z of dimensions nxm and nx(n-m) are computed from A^T so that
+    # their columns are orthonormal and every x can be written as x = Y*b + Z*x_z =
+    # c + Z*x_z, where c = Y*b is a fixed vector of dimension n and x_z is an
+    # arbitrary vector of dimension n-m. Then, the problem of minimizing f(x)
+    # subject to Ax = b is equivalent to minimizing f(c + Z*x_z) with no constraints.
+    # The computed Y and Z are such that any solution of Ax = b can be written as
+    # x = Y*x_y + Z*x_z for some x_y, x_z. Furthermore, A*Y is nonsingular, A*Z = 0
+    # and Z spans the null space of A.
+    #
+    # The function accepts A, b and computes c, Y, Z.
+    m, n = size(A)
+    if m > n
+        error("Matrix of constraints cannot have more rows [$m] than columns [$n] in levenberg_marquardt_lec_elim()!")
+    end
+
+    Aqr = LinearAlgebra.qr( transpose(A), Val(true) )
+
+    aux::T = max( 1e-12, n * 10.0 * eps(T) * abs(Aqr.R[1]) ) # threshold. n is max(m, n); ensure that threshold is not too small
+    rank   = 0
+    for i in 1:m
+        # loop across R's diagonal elements
+        if abs(Aqr.R[i,i]) > aux 
+            rank += 1
+        else
+            # diagonal is arranged in absolute decreasing order
+            break
+        end
+    end
+
+    if rank < m
+        error( "Constraints matrix in levenberg_marquardt_lec_elim() is not of full row rank (i.e. $(rank) < $(n))!"
+               * " Make sure that you do not specify redundant or inconsistent constraints." )
+    end
+
+    Y = (Aqr.Q[:,1:rank])*inv(transpose(Aqr.R)) * Aqr.P
+    c = Y*b
+    Z = Aqr.Q[:,rank+1:end]
+
+    return c, Z
+end # function lm_lec_elim
+
+struct LMLecData{T <: AbstractFloat}
+    c::Vector{T}
+    Z::Matrix{T}
+    x::Vector{T}
+    f::Function
+    Df::Function
+end
+
+function lmlec_func( xx::AbstractVector{T}; lec_data::LMLecData ) where T <: AbstractFloat
+    # constrained measurements: given xx, compute the measurements at c + Z*xx */
+
+    # x = c + Z*xx
+    mul!( lec_data.x, lec_data.Z, xx )
+    for i in 1:length(lec_data.x)
+        lec_data.x[i] += lec_data.c[i]
+    end
+
+    return lec_data.f(lec_data.x)
+end
+
+function lmlec_jacf( xx::AbstractVector{T}; lec_data::LMLecData ) where T <: AbstractFloat
+    # constrained Jacobian: given xx, compute the Jacobian at c + Z*xx
+    # Using the chain rule, the Jacobian with respect to xx equals the
+    # product of the Jacobian with respect to x (at c + Z*x) times Z
+
+    # x = c + Z*xx
+    mul!( lec_data.x, lec_data.Z, xx )
+    lec_data.x += lec_data.c
+
+	# return the Jacobian J*Z
+    return lec_data.Df(lec_data.x) * Z
+end
+
+function levenberg_marquardt_lec( f::Function,
+                                  Df::Function,
+                                  x::AbstractVector{T},
+                                  hy::AbstractVector{T},
+                                  A::AbstractMatrix{T},
+                                  b::AbstractVector{T},
+                                  maxit::Int                 = 0,
+                                  μ::T                       = 1e-3,
+                                  Jtε_stop::T                = 1e-15,
+                                  Δx_stop::T                 = 1e-15,
+                                  εy_stop::T                 = 1e-20,
+                                  compute_covar_matrix::Bool = false ) where T <: AbstractFloat
+    # This function is similar to levenberg_marquardt except that the minimization
+    # is performed subject to the linear constraints Ax=b, A is kxm, b kx1
+    n    = length(hy)
+    k, m = size(A)
+    if length(x) != m
+        error("levenberg_marquardt_lec(): Wrong dimensions of constraints matrix A [$(k)x$(m)], incompatible with dimension of x [$(length(x))]")
+    end
+
+    if n + k < m
+        error("levenberg_marquardt_lec(): cannot solve a problem with fewer measurements + equality constraints [$n + $k] than unknowns [$m]")
+    end
+
+    c, Z = lm_lec_elim( A, b )
+
+    xx = transpose(Z)*(x-c)
+    if max(abs.(c + Z*xx - x0)) > 1e-3
+        println("Warning: starting point not feasible in levenberg_marquardt_lec()! [$x reset to $(c+Z*xx)]")
+    end
+
+    lec_data   = LMLecData( c, Z, x , f, Df )
+    f_lec(x_)  = lmlec_func( x_; lec_data=lec_data )
+    Df_lec(x_) = lmlec_jacf( x_; lec_data=lec_data )
+    lmo        = levenberg_marquardt( f_lec, Df_lec, x, hy, maxit, μ, Jtε_stop, Δx_stop, εy_stop )
+
+    x = c + Z*lmo.x
+    y = f(x)
+
+    covar = lmo.covar
+	if compute_covar_matrix
+        J  = Matrix{T}( undef, n, m )
+        # compute the Jacobian with finite differences and use it to estimate the covariance
+        lm_fwd_jac_approx( f, J, x, y, δ )
+        try
+            covar  = pinv(transpose(J)*J)
+            covar *= (εy_ℓ2 / (n-rank(covar)))
+        catch
+            pass
+        end
+    end
+
+    return LMOtimization( x, y,
+                          lmo.stop_error,
+                          lmo.niter,
+                          lmo.stop,
+                          lmo.nfev,
+                          lmo.njev,
+                          lmo.nlss,
+                          lmo.ε0_ℓ2,
+                          lmo.ε_ℓ2,
+                          lmo.Jtε_ℓ∞,
+                          lmo.Δx2_ℓ2,
+                          lmo.μ_dJtJ,
+                          covar )
+end # function levenberg_marquardt_lec (without jacobian)
+    
+    
+function levenberg_marquardt_lec( f::Function,
+                                  x::AbstractVector{T},
+                                  hy::AbstractVector{T},
+                                  A::AbstractMatrix{T},
+                                  b::AbstractVector{T},
+                                  maxit::Int                 = 0,
+                                  μ::T                       = 1e-3,
+                                  Jtε_stop::T                = 1e-15,
+                                  Δx_stop::T                 = 1e-15,
+                                  εy_stop::T                 = 1e-20;
+                                  compute_covar_matrix::Bool = false ) where T <: AbstractFloat
+    # This function is similar to levenberg_marquardt except that the minimization
+    # is performed subject to the linear constraints Ax=b, A is kxm, b kx1
+    n    = length(hy)
+    k, m = size(A)
+    if length(x) != m
+        error("levenberg_marquardt_lec(): Wrong dimensions of constraints matrix A [$(k)x$(m)], incompatible with dimension of x [$(length(x))]")
+    end
+
+    if n + k < m
+        error("levenberg_marquardt_lec(): cannot solve a problem with fewer measurements + equality constraints [$n + $k] than unknowns [$m]")
+    end
+
+    c, Z = lm_lec_elim( A, b )
+
+    xx = transpose(Z)*(x-c)
+    if maximum(abs.(c + Z*xx - x)) > 1e-3
+        println("Warning: starting point not feasible in levenberg_marquardt_lec()! [$x reset to $(c+Z*xx)]")
+    end
+
+    f_lec(x_) = lmlec_func( x_; lec_data=LMLecData( c, Z, x , f, f ) )
+    lmo       = levenberg_marquardt( f_lec, xx, hy, maxit, μ, Jtε_stop, Δx_stop, εy_stop )
+
+    x = c + Z*lmo.x
+    y = f(x)
+
+    covar = lmo.covar
+	if compute_covar_matrix
+        J  = Matrix{T}( undef, n, m )
+        # compute the Jacobian with finite differences and use it to estimate the covariance
+        lm_fwd_jac_approx( f, J, x, y, δ )
+        try
+            covar  = pinv(transpose(J)*J)
+            covar *= (εy_ℓ2 / (n-rank(covar)))
+        catch
+            pass
+        end
+    end
+
+    return LMOtimization( x, y,
+                          lmo.stop_error,
+                          lmo.niter,
+                          lmo.stop,
+                          lmo.nfev,
+                          lmo.njev,
+                          lmo.nlss,
+                          lmo.ε0_ℓ2,
+                          lmo.ε_ℓ2,
+                          lmo.Jtε_ℓ∞,
+                          lmo.Δx2_ℓ2,
+                          lmo.μ_dJtJ,
+                          covar )
+end # function levenberg_marquardt_lec (with Jacobian)
 
 end # Module JLLM

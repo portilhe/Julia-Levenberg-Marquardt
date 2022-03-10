@@ -3,9 +3,9 @@ function f_helical_valley( x::AbstractVector{T} ) where {T <: AbstractFloat}
     y = Vector{T}( undef, 3 )
 
     if x[1] < zero(T)
-        θ = atan( x[2]/ x[1] ) / 2π + 0.5
+        θ = atan( x[2], x[1] ) / 2π + 0.5
     elseif zero(T) < x[1]
-        θ = atan( x[2]/ x[1]) / 2π
+        θ = atan( x[2], x[1]) / 2π
     else
         θ = x[2] >= zero(T) ? 0.25 : -0.25
     end
@@ -37,7 +37,7 @@ function Df_helical_valley( x::AbstractVector{T} ) where {T <: AbstractFloat}
     return Df
 end
 
-# helical valley function, minimum at (1.0, 0.0, 0.0)
+# Helical valley function, minimum at (1.0, 0.0, 0.0)
 function helical_valley_test( ::IO, alt_prob::Bool )
     x  = [ -1.0, 0.0, 0.0 ]
     hy = [  0.0, 0.0, 0.0 ]
